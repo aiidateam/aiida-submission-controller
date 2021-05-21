@@ -2,7 +2,6 @@
 
 Author: Giovanni Pizzi (2021).
 """
-
 from aiida import orm, engine, plugins
 import abc
 
@@ -44,6 +43,36 @@ class BaseSubmissionController:
         """Value of the maximum number of concurrent processes that can be run."""
         return self._max_concurrent
 
+    def get_query(self, process_projections, only_active=False):
+        """
+        Return a QueryBuilder object to get all processes in the group associated to this.
+
+        Projections on the process must be specified.
+
+        :note: the query has the process already tagged with tag "process", so you can further append to this query
+             using this tag, e.g. to get the outputs of the process itself.
+
+        :param process_projections: a list of projections for the ProcessNode.
+        :param only_active: if True, will filter only on active (not-sealed) processes.
+        """
+        qb = orm.QueryBuilder()
+        filters = {}
+        if only_active:
+            filters={'or': [{'attributes.sealed': False}, {'attributes': {'!has_key': 'sealed'}}]}
+
+        qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
+        qb.append(orm.ProcessNode, project=process_projections, filters=filters, tag='process',  with_group='group')
+        return qb
+
+    def get_process_extra_projections(self):
+        """
+        Return a list of QueryBuilder projections on the process, that will return the values of the extras
+        according to the output of ``get_extra_unique_keys()``.
+
+        The idea is to be used as ``process_projections`` for ``get_query()``.
+        """
+        return [f'extras.{unique_key}' for unique_key in self.get_extra_unique_keys()]
+
     def get_all_submitted_pks(self):
         """Return a dictionary of all processes that have been already submitted (i.e., are in the group).
         
@@ -56,18 +85,16 @@ class BaseSubmissionController:
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = [f'extras.{unique_key}' for unique_key in self.get_extra_unique_keys()] + ['id']
+        projections = self.get_process_extra_projections() + ['id']
 
-        qb = orm.QueryBuilder()
-        qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode, project=projections, tag='process',  with_group='group')
+        qb = self.get_query(only_active=False, process_projections=projections)
         all_submitted = {}
         for data in qb.all():
             all_submitted[tuple(data[:-1])] = data[-1]
 
         return all_submitted
 
-    def get_all_submitted_processes(self):
+    def get_all_submitted_processes(self, only_active=False):
         """Return a dictionary of all processes that have been already submitted (i.e., are in the group).
         
         :return: a dictionary where:
@@ -79,11 +106,9 @@ class BaseSubmissionController:
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = [f'extras.{unique_key}' for unique_key in self.get_extra_unique_keys()] + ['*']
+        projections = self.get_process_extra_projections() + ['*']
 
-        qb = orm.QueryBuilder()
-        qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode, project=projections, tag='process',  with_group='group')
+        qb = self.get_query(only_active=only_active, process_projections=projections)
         all_submitted = {}
         for data in qb.all():
             all_submitted[tuple(data[:-1])] = data[-1]
@@ -96,9 +121,7 @@ class BaseSubmissionController:
 
     def _count_active_in_group(self):
         """Count how many active (unsealed) processes there are in the group."""
-        qb = orm.QueryBuilder()
-        qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode, project='id', tag='process',  with_group='group', filters={'or': [{'attributes.sealed': False}, {'attributes': {'!has_key': 'sealed'}}]})
+        qb = self.get_query(process_projections=['id'], only_active=True)
         return(qb.count())
 
     @property
@@ -267,17 +290,33 @@ if __name__ == "__main__":
     sys.stdout.write('----' + '----' * 12)
     sys.stdout.write('\n')
 
+    # Get all results in a single query
+    qb = controller.get_query(process_projections=controller.get_process_extra_projections())
+    qb.append(orm.Int, project='attributes.value', with_incoming='process')
+    results = {}
+    for res in qb.all():
+        ## TODO: see if there is a way to make this even simpler
+        results[tuple(res[:len(controller.get_process_extra_projections())])] = res[len(controller.get_process_extra_projections()):]
+
+    # I get all running ones - the query above will not distinguish between processes that do not exist at all
+    # (never submitted) and those that exist but do not have an output (failed, or still running)
+    all_submitted = controller.get_all_submitted_processes()
+
     # Print table
     for left in range(1, 13):
         sys.stdout.write(f'{left:2d} |')
         for right in range(1, 13):
-            process = all_submitted.get((left, right))
-            if process is None:
-                result = '###' # No node
+            # One could do process.outputs.sum.value, but this will perform a query every time,
+            # so the loop becomes much slower
+            result = results.get((left, right), None)
+            if result is None:
+                # This could be both because it was never submitted, or because it's running or failed.
+                # I try to distinguish the two (I still don't distinguish between failed or running)
+                if (left, right) in all_submitted:
+                    sys.stdout.write('??? ')
+                else:
+                    sys.stdout.write('### ')
             else:
-                try:
-                    result = f'{process.outputs.sum.value:3d}'
-                except AttributeError:
-                    result = f'???'  # Probably not completed, does not have output 'sum'
-            sys.stdout.write(result + ' ')
+                # result is a list of projected values, here there's only one
+                sys.stdout.write(f'{result[0]:3d} ')
         sys.stdout.write('\n')
