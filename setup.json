@@ -1,0 +1,19 @@
+{
+    "author": "Giovanni Pizzi",
+    "classifiers": [
+        "Development Status :: 4 - Beta",
+        "Framework :: AiiDA",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS :: MacOS X",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8"
+    ],
+    "description": "Utilities for controlling submission flow in AiiDA",
+    "python_requires": ">=3.6",
+    "license": "MIT License",
+    "name": "aiida-submission-controller",
+    "version": "0.1.0"
+}
