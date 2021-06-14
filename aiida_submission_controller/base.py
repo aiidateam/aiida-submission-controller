@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many.
 
 Author: Giovanni Pizzi (2021).
@@ -7,24 +8,21 @@ import abc
 
 from aiida import engine, orm
 
-__all__ = ('BaseSubmissionController', )
-
 
 class BaseSubmissionController:
     """Controller to submit a maximum number of processes (workflows or calculations) at a given time.
-    
+
     This is an abstract base class: you need to subclass it and define the abstract methods.
     """
 
     def __init__(self, group_label, max_concurrent):
-        """
-        Create a new controller to manage (and limit) concurrent submissions.
+        """Create a new controller to manage (and limit) concurrent submissions.
 
         :param group_label: a group label: the group will be created at instantiation (if not existing already,
             and it will be used to manage the calculations)
         :param extra_unique_keys: a tuple or list of keys of extras that are used to uniquely identify
             a process in the group. E.g. ('value1', 'value2').
-        
+
         :note: try to use actual values that allow for an equality comparison (strings, bools, integers), and avoid
            floats, because of truncation errors.
         """
@@ -51,7 +49,7 @@ class BaseSubmissionController:
 
     def get_all_submitted_pks(self):
         """Return a dictionary of all processes that have been already submitted (i.e., are in the group).
-        
+
         :return: a dictionary where:
 
             - the keys are the tuples with the values of extras that uniquely identifies processes, in the same
@@ -61,17 +59,11 @@ class BaseSubmissionController:
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = [
-            f'extras.{unique_key}'
-            for unique_key in self.get_extra_unique_keys()
-        ] + ['id']
+        projections = [f'extras.{unique_key}' for unique_key in self.get_extra_unique_keys()] + ['id']
 
         qb = orm.QueryBuilder()
         qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode,
-                  project=projections,
-                  tag='process',
-                  with_group='group')
+        qb.append(orm.ProcessNode, project=projections, tag='process', with_group='group')
         all_submitted = {}
         for data in qb.all():
             all_submitted[tuple(data[:-1])] = data[-1]
@@ -80,7 +72,7 @@ class BaseSubmissionController:
 
     def get_all_submitted_processes(self):
         """Return a dictionary of all processes that have been already submitted (i.e., are in the group).
-        
+
         :return: a dictionary where:
 
             - the keys are the tuples with the values of extras that uniquely identifies processes, in the same
@@ -90,17 +82,11 @@ class BaseSubmissionController:
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = [
-            f'extras.{unique_key}'
-            for unique_key in self.get_extra_unique_keys()
-        ] + ['*']
+        projections = [f'extras.{unique_key}' for unique_key in self.get_extra_unique_keys()] + ['*']
 
         qb = orm.QueryBuilder()
         qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode,
-                  project=projections,
-                  tag='process',
-                  with_group='group')
+        qb.append(orm.ProcessNode, project=projections, tag='process', with_group='group')
         all_submitted = {}
         for data in qb.all():
             all_submitted[tuple(data[:-1])] = data[-1]
@@ -115,20 +101,20 @@ class BaseSubmissionController:
         """Count how many active (unsealed) processes there are in the group."""
         qb = orm.QueryBuilder()
         qb.append(orm.Group, filters={'label': self.group_label}, tag='group')
-        qb.append(orm.ProcessNode,
-                  project='id',
-                  tag='process',
-                  with_group='group',
-                  filters={
-                      'or': [{
-                          'attributes.sealed': False
-                      }, {
-                          'attributes': {
-                              '!has_key': 'sealed'
-                          }
-                      }]
-                  })
-        return (qb.count())
+        qb.append(
+            orm.ProcessNode,
+            project='id',
+            tag='process',
+            with_group='group',
+            filters={'or': [{
+                'attributes.sealed': False
+            }, {
+                'attributes': {
+                    '!has_key': 'sealed'
+                }
+            }]}
+        )
+        return qb.count()
 
     @property
     def num_active_slots(self):
@@ -143,8 +129,7 @@ class BaseSubmissionController:
     @property
     def num_to_run(self):
         """Number of processes that still have to be submitted."""
-        return len(self.get_all_extras_to_submit().difference(
-            self._check_submitted_extras()))
+        return len(self.get_all_extras_to_submit().difference(self._check_submitted_extras()))
 
     @property
     def num_already_run(self):
@@ -152,15 +137,13 @@ class BaseSubmissionController:
         return len(self._check_submitted_extras())
 
     def submit_new_batch(self, dry_run=False, sort=True):
-        """Submit a new batch of calculations, avoiding to have more than self.max_concurrent active at the same time."""
+        """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         to_submit = []
-        extras_to_run = set(self.get_all_extras_to_submit()).difference(
-            self._check_submitted_extras())
+        extras_to_run = set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras())
         if sort:
             extras_to_run = sorted(extras_to_run)
         for workchain_extras in extras_to_run:
-            if len(to_submit) + self._count_active_in_group(
-            ) >= self.max_concurrent:
+            if len(to_submit) + self._count_active_in_group() >= self.max_concurrent:
                 break
             to_submit.append(workchain_extras)
 
@@ -170,17 +153,12 @@ class BaseSubmissionController:
         submitted = {}
         for workchain_extras in to_submit:
             # Get the inputs and the process calculation for submission
-            inputs, process_class = self.get_inputs_and_processclass_from_extras(
-                workchain_extras)
+            inputs, process_class = self.get_inputs_and_processclass_from_extras(workchain_extras)
 
             # Actually submit
             res = engine.submit(process_class, **inputs)
             # Add extras, and put in group
-            res.set_extra_many({
-                key: value
-                for key, value in zip(self.get_extra_unique_keys(),
-                                      workchain_extras)
-            })
+            res.set_extra_many({key: value for key, value in zip(self.get_extra_unique_keys(), workchain_extras)})
             self.group.add_nodes([res])
             submitted[workchain_extras] = res
 
@@ -189,29 +167,28 @@ class BaseSubmissionController:
     @abc.abstractmethod
     def get_extra_unique_keys(self):
         """Return a tuple of the kes of the unique extras that will be used to uniquely identify your workchains."""
-        pass
+        return
 
     @abc.abstractmethod
     def get_all_extras_to_submit(self):
-        """
-        Return a *set* of the values of all extras uniquely identifying all simulations that you want to submit.
-        
+        """Return a *set* of the values of all extras uniquely identifying all simulations that you want to submit.
+
         Each entry of the set must be a tuple, in same order as the keys returned by get_extra_unique_keys().
 
         :note: for each item, pass extra values as tuples (because lists are not hashable, so you cannot make
             a set out of them).
         """
-        pass
+        return
 
     @abc.abstractmethod
     def get_inputs_and_processclass_from_extras(self, extras_values):
         """Return the inputs and the process class for the process to run, associated a given tuple of extras values.
-        
+
         :param extras_values: a tuple of values of the extras, in same order as the keys returned by
             get_extra_unique_keys().
-        
+
         :return: ``(inputs, process_class)``, that will be used as follows:
-           
+
            submit(process_class, **inputs)
         """
-        pass
+        return
