@@ -1,37 +1,36 @@
+# -*- coding: utf-8 -*-
 """An example of a SubmissionController implementation for a small set of PwBaseWorkChains."""
 
 import typing as ty
-
-from aiida import orm, plugins, load_profile
-from aiida_submission_controller.submission_controller import BaseSubmissionController
-from qe_tools import CONSTANTS
 import warnings
+
+from aiida import load_profile, orm, plugins
+from qe_tools import CONSTANTS
+
+from aiida_submission_controller import BaseSubmissionController
 
 
 class PwBaseSubmissionController(BaseSubmissionController):
     """The implementation of a SubmissionController to run a small set of PwBaseWorkChains."""
 
-    INPUT_PLUGIN = 'quantumespresso.pw'
     WORKFLOW_ENTRY_POINT = 'quantumespresso.pw.base'
 
     def __init__(
-            self,
-            code_id: ty.Union[str, int],
-            structure_group_id: ty.Union[str, int],
-            structure_filters: ty.Dict[str, ty.Any],
-            pseudo_family_id: ty.Union[str, int],
-            *args,
-            **kwargs
-        ):
-        """Add a `code_id` argument for loading a code associated to `quantumespresso.pw`."""
+        self,
+        pw_code_id: ty.Union[str, int],
+        structure_group_id: ty.Union[str, int],
+        pseudo_family_id: ty.Union[str, int],
+        *args,
+        structure_filters: ty.Optional[ty.Dict[str, ty.Any]] = None,
+        **kwargs
+    ):
+        """A SubmissionController for PwBaseWorkChains."""
         super().__init__(*args, **kwargs)
-        self._code = orm.load_code(identifier=code_id)
+        self._code = orm.load_code(identifier=pw_code_id)
         self._process_class = plugins.WorkflowFactory(self.WORKFLOW_ENTRY_POINT)
         self._structure_group = orm.load_group(identifier=structure_group_id)
-        self._structure_filters = structure_filters
+        self._structure_filters = structure_filters if structure_filters is not None else {}
         self._pseudo_family = orm.load_group(identifier=pseudo_family_id)
-
-        # assert self._code.get_plugin_name() == self.INPUT_PLUGIN
 
     def get_extra_unique_keys(self) -> ty.Tuple[str]:
         """Return a tuple of the extra key or keys used to uniquely identify your workchains."""
@@ -40,18 +39,21 @@ class PwBaseSubmissionController(BaseSubmissionController):
     def get_all_extras_to_submit(self) -> ty.Set[ty.Tuple[str]]:
         """Return a set of all the unique extras to submit."""
         pseudo_family_elements = set(self._pseudo_family.elements)
-        
+
         qb = orm.QueryBuilder()
         qb.append(orm.Group, filters={'label': self._structure_group.label}, tag='group')
-        qb.append(orm.StructureData,
-                  project=['extras.mpid', 'attributes.kinds'],
-                  tag='structure',
-                  with_group='group',
-                  filters={
-                      'extras': {'has_key': 'mpid'},
-                      **self._structure_filters
-                  }
-            )
+        qb.append(
+            orm.StructureData,
+            project=['extras.mpid', 'attributes.kinds'],
+            tag='structure',
+            with_group='group',
+            filters={
+                'extras': {
+                    'has_key': 'mpid'
+                },
+                **self._structure_filters
+            }
+        )
         qr = qb.all()
 
         all_extras = []
@@ -60,103 +62,110 @@ class PwBaseSubmissionController(BaseSubmissionController):
             if kind_names.issubset(pseudo_family_elements):
                 all_extras.append((mpid,))
         all_extras = set(all_extras)
-        
+
         # all_extras = set((mpid,) for mpid in qb.all(flat=True))
         return all_extras
 
     def _get_structure_from_extras(self, extras_values: ty.Tuple[str]) -> orm.StructureData:
         qb = orm.QueryBuilder()
         qb.append(orm.Group, filters={'label': self._structure_group.label}, tag='group')
-        qb.append(orm.StructureData,
-                  project='*',
-                  tag='structure',
-                  with_group='group',
-                  filters={
-                      'extras.mpid': extras_values[0]
-                  }
-            )
+        qb.append(
+            orm.StructureData,
+            project='*',
+            tag='structure',
+            with_group='group',
+            filters={'extras.mpid': extras_values[0]}
+        )
         structure = qb.all(flat=True)[0]
         return structure
 
     def get_inputs_and_processclass_from_extras(self, extras_values: ty.Tuple[str]):
         """Construct the inputs and get the process class from the values of the uniquely identifying extras."""
         structure = self._get_structure_from_extras(extras_values)
-        try:
-            pseudos = self._pseudo_family.get_pseudos(structure=structure)
-            ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(structure=structure)
+        pseudos = self._pseudo_family.get_pseudos(structure=structure)
+        ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(structure=structure)
+        metadata = {
+            'options': {
+                'resources': {
+                    'num_machines': 1,
+                    'num_mpiprocs_per_machine': 1
+                },
+                'max_wallclock_seconds': 2 * 60,
+                'withmpi': True
+            }
+        }
 
-            inputs = {
-                'kpoints_distance': orm.Float(0.15),
-                'pw': {
-                    'metadata': {
-                        'options': {
-                            'resources': {
-                                'num_machines': 1,
-                                'num_mpiprocs_per_machine': 1
-                            },
-                            'max_wallclock_seconds': 30 * 60,
-                            'withmpi': True
-                        }
-                    },
-                    'code': self._code,
-                    'structure': structure,
-                    'pseudos': pseudos,
-                    'parameters': orm.Dict(dict={
+        inputs = {
+            'clean_workdir': orm.Bool(True),
+            'kpoints_distance': orm.Float(0.25),
+            'pw': {
+                'structure':
+                structure,
+                'metadata':
+                metadata,
+                'code':
+                self._code,
+                'pseudos':
+                pseudos,
+                'parameters':
+                orm.Dict(
+                    dict={
                         'CONTROL': {
                             'calculation': 'scf',
+                            'verbosity': 'low'
                         },
                         'SYSTEM': {
                             'ecutwfc': ecutwfc,
                             'ecutrho': ecutrho,
                             'nosym': False,
+                            'occupations': 'smearing',
                             'smearing': 'gaussian',
-                            'degauss': 0.2 / CONSTANTS.ry_to_ev
+                            'degauss': 0.5 / CONSTANTS.ry_to_ev
                         },
                         'ELECTRONS': {
-                            'conv_thr': 1e-10,
+                            'conv_thr': 1e-8,
                             'mixing_beta': 4e-1,
-                            'electron_maxstep': 0,
-                            'scf_must_converge': False
+                            'electron_maxstep': 80,
                         }
-                    })
-                },
+                    }
+                )
             }
+        }
 
-            return inputs, self._process_class
-
-        except ValueError:
-            warnings.warn(f'Cannot run mpid {extras_values[0]} for lack of pseudos.')
-            return None, None
+        return inputs, self._process_class
 
 
 if __name__ == '__main__':
-    # import sys
+    warnings.filterwarnings('ignore')
 
-    load_profile('qnscf')
+    PROFILE = 'asc'
+    PSEUDO_FAMILY_ID = 'SSSP/1.1/PBE/efficiency'
+
+    load_profile(PROFILE)
 
     controller = PwBaseSubmissionController(
-        code_id='pw-6.7_qnscf',
-        structure_group_id='mp_all',
+        pw_code_id='pw-6.7MaX_conda',
+        structure_group_id='structures/mp/2018_10_18',
         structure_filters={
             'attributes.sites': {
                 'longer': 0,
-                'shorter': 2
-            }
+                'shorter': 3
+            },
         },
-        pseudo_family_id='SSSP/1.1/PBE/efficiency',
-        group_label='tests/mp_all/pw_pdos_qnscf',
-        max_concurrent=100
+        pseudo_family_id=PSEUDO_FAMILY_ID,
+        group_label='tests/pw_base',
+        max_concurrent=2
     )
 
-    print("Max concurrent :", controller.max_concurrent)
-    print("Active slots   :", controller.num_active_slots)
-    print("Available slots:", controller.num_available_slots)
-    print("Already run    :", controller.num_already_run)
-    print("Still to run   :", controller.num_to_run)
+    print('Max concurrent :', controller.max_concurrent)
+    print('Active slots   :', controller.num_active_slots)
+    print('Available slots:', controller.num_available_slots)
+    print('Already run    :', controller.num_already_run)
+    print('Still to run   :', controller.num_to_run)
     print()
 
+    print('Submitting...')
     run_processes = controller.submit_new_batch(dry_run=False)
     for run_process_extras, run_process in run_processes.items():
         print(f'{run_process_extras} --> <{run_process}>')
-
-    print()
+    print('Done.')
