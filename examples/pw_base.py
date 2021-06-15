@@ -138,13 +138,14 @@ class PwBaseSubmissionController(BaseSubmissionController):
         return inputs, self._process_class
 
 
-if __name__ == '__main__':
+def main():
+    """Main execution when called as a script."""
     warnings.filterwarnings('ignore')
 
-    PROFILE = 'asc'
-    PSEUDO_FAMILY_ID = 'SSSP/1.1/PBE/efficiency'
+    profile = 'asc'
+    pseudo_family_id = 'SSSP/1.1/PBE/efficiency'
 
-    load_profile(PROFILE)
+    load_profile(profile)
 
     controller = PwBaseSubmissionController(
         pw_code_id='pw-6.7MaX_conda',
@@ -155,7 +156,7 @@ if __name__ == '__main__':
                 'shorter': 3
             },
         },
-        pseudo_family_id=PSEUDO_FAMILY_ID,
+        pseudo_family_id=pseudo_family_id,
         group_label='tests/pw_base',
         max_concurrent=2)
 
@@ -171,3 +172,7 @@ if __name__ == '__main__':
     for run_process_extras, run_process in run_processes.items():
         print(f'{run_process_extras} --> <{run_process}>')
     print('Done.')
+
+
+if __name__ == '__main__':
+    main()

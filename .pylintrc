@@ -17,3 +17,8 @@ max-locals=30
 
 # Maximum number of characters on a single line.
 max-line-length=120
+
+[TYPECHECK]
+
+# I don't want to install AiiDA and qe-tools to test this module (for now)
+ignored-modules=aiida,qe_tools
