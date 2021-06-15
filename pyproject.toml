@@ -1,0 +1,34 @@
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-continuation",
+    "bad-option-value",
+    "cyclic-import",
+    "duplicate-code",
+    "import-outside-toplevel",
+    "inconsistent-return-statements",
+    "locally-disabled",
+    "no-else-raise",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "useless-suppression",
+    "unnecessary-comprehension"
+]
+
+[tool.pylint.basic]
+good-names = [
+    "_",
+    "x",
+    "y",
+    "z",
+    "i",
+    "j",
+    "k",
+    "pk",
+    "qb",
+    "qr"
+]
