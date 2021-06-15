@@ -3,10 +3,6 @@
 
 Author: Giovanni Pizzi (2021).
 """
-<<<<<<< HEAD:aiida_submission_controller/base.py
-=======
-
->>>>>>> aa30a6c0a1fe6575fcafc6ddbaa72092ddc250ed:submission_controller.py
 import abc
 
 from aiida import engine, orm
