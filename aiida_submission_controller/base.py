@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many.
-
-Author: Giovanni Pizzi (2021).
 """
 import abc
 
