@@ -5,5 +5,6 @@ __version__ = '0.1.0'
 __author__ = 'Giovanni Pizzi, Austin Zadoks'
 
 from .base import BaseSubmissionController
+from .from_group import FromGroupSubmissionController
 
-__all__ = ('BaseSubmissionController', )
+__all__ = ('BaseSubmissionController', 'FromGroupSubmissionController')
