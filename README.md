@@ -15,6 +15,3 @@ where you can adapt the sleep time (typically for real simulations you might wan
 range of 5-10 minutes, or anyway so that at every new run you have at least some new processes to submit,
 but still less that the maximum number of available slots, to try to keep the 'queue' quite filled at any
 given time.
-
-
-

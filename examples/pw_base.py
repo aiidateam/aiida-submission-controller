@@ -4,8 +4,9 @@
 import typing as ty
 import warnings
 
-from aiida import load_profile, orm, plugins
 from qe_tools import CONSTANTS
+
+from aiida import load_profile, orm, plugins
 
 from aiida_submission_controller import BaseSubmissionController
 
@@ -15,75 +16,78 @@ class PwBaseSubmissionController(BaseSubmissionController):
 
     WORKFLOW_ENTRY_POINT = 'quantumespresso.pw.base'
 
-    def __init__(
-        self,
-        pw_code_id: ty.Union[str, int],
-        structure_group_id: ty.Union[str, int],
-        pseudo_family_id: ty.Union[str, int],
-        *args,
-        structure_filters: ty.Optional[ty.Dict[str, ty.Any]] = None,
-        **kwargs
-    ):
+    def __init__(self,
+                 pw_code_id: ty.Union[str, int],
+                 structure_group_id: ty.Union[str, int],
+                 pseudo_family_id: ty.Union[str, int],
+                 *args,
+                 structure_filters: ty.Optional[ty.Dict[str, ty.Any]] = None,
+                 **kwargs):
         """A SubmissionController for PwBaseWorkChains."""
         super().__init__(*args, **kwargs)
         self._code = orm.load_code(identifier=pw_code_id)
-        self._process_class = plugins.WorkflowFactory(self.WORKFLOW_ENTRY_POINT)
+        self._process_class = plugins.WorkflowFactory(
+            self.WORKFLOW_ENTRY_POINT)
         self._structure_group = orm.load_group(identifier=structure_group_id)
         self._structure_filters = structure_filters if structure_filters is not None else {}
         self._pseudo_family = orm.load_group(identifier=pseudo_family_id)
 
     def get_extra_unique_keys(self) -> ty.Tuple[str]:
         """Return a tuple of the extra key or keys used to uniquely identify your workchains."""
-        return ('mpid',)
+        return ('mpid', )
 
     def get_all_extras_to_submit(self) -> ty.Set[ty.Tuple[str]]:
         """Return a set of all the unique extras to submit."""
         pseudo_family_elements = set(self._pseudo_family.elements)
 
-        qb = orm.QueryBuilder()
-        qb.append(orm.Group, filters={'label': self._structure_group.label}, tag='group')
-        qb.append(
-            orm.StructureData,
-            project=['extras.mpid', 'attributes.kinds'],
-            tag='structure',
-            with_group='group',
-            filters={
-                'extras': {
-                    'has_key': 'mpid'
-                },
-                **self._structure_filters
-            }
-        )
-        qr = qb.all()
+        qbuild = orm.QueryBuilder()
+        qbuild.append(orm.Group,
+                      filters={'label': self._structure_group.label},
+                      tag='group')
+        qbuild.append(orm.StructureData,
+                      project=['extras.mpid', 'attributes.kinds'],
+                      tag='structure',
+                      with_group='group',
+                      filters={
+                          'extras': {
+                              'has_key': 'mpid'
+                          },
+                          **self._structure_filters
+                      })
+        res = qbuild.all()
 
         all_extras = []
-        for (mpid, kinds) in qr:
+        for (mpid, kinds) in res:
             kind_names = set(kind['name'] for kind in kinds)
             if kind_names.issubset(pseudo_family_elements):
-                all_extras.append((mpid,))
+                all_extras.append((mpid, ))
         all_extras = set(all_extras)
 
         # all_extras = set((mpid,) for mpid in qb.all(flat=True))
         return all_extras
 
-    def _get_structure_from_extras(self, extras_values: ty.Tuple[str]) -> orm.StructureData:
-        qb = orm.QueryBuilder()
-        qb.append(orm.Group, filters={'label': self._structure_group.label}, tag='group')
-        qb.append(
-            orm.StructureData,
-            project='*',
-            tag='structure',
-            with_group='group',
-            filters={'extras.mpid': extras_values[0]}
-        )
-        structure = qb.all(flat=True)[0]
+    def _get_structure_from_extras(
+            self, extras_values: ty.Tuple[str]) -> orm.StructureData:
+        """Get a structure from the values of the extras."""
+        qbuild = orm.QueryBuilder()
+        qbuild.append(orm.Group,
+                      filters={'label': self._structure_group.label},
+                      tag='group')
+        qbuild.append(orm.StructureData,
+                      project='*',
+                      tag='structure',
+                      with_group='group',
+                      filters={'extras.mpid': extras_values[0]})
+        structure = qbuild.all(flat=True)[0]
         return structure
 
-    def get_inputs_and_processclass_from_extras(self, extras_values: ty.Tuple[str]):
+    def get_inputs_and_processclass_from_extras(self,
+                                                extras_values: ty.Tuple[str]):
         """Construct the inputs and get the process class from the values of the uniquely identifying extras."""
         structure = self._get_structure_from_extras(extras_values)
         pseudos = self._pseudo_family.get_pseudos(structure=structure)
-        ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(structure=structure)
+        ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(
+            structure=structure)
         metadata = {
             'options': {
                 'resources': {
@@ -127,8 +131,7 @@ class PwBaseSubmissionController(BaseSubmissionController):
                             'mixing_beta': 4e-1,
                             'electron_maxstep': 80,
                         }
-                    }
-                )
+                    })
             }
         }
 
@@ -154,8 +157,7 @@ if __name__ == '__main__':
         },
         pseudo_family_id=PSEUDO_FAMILY_ID,
         group_label='tests/pw_base',
-        max_concurrent=2
-    )
+        max_concurrent=2)
 
     print('Max concurrent :', controller.max_concurrent)
     print('Active slots   :', controller.num_active_slots)

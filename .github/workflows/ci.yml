@@ -1,0 +1,23 @@
+name: Continuous integration
+
+on: [push, pull_request]
+
+jobs:
+  precommit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+
+      - name: Install python dependencies
+        run: |
+          pip install pre-commit
+
+      - name: Run pre-commit
+        run:
+          pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )

@@ -22,16 +22,15 @@ repos:
             '--fail-on-change',
         ]
 
--   repo: https://github.com/PyCQA/pydocstyle
-    rev: 5.0.2
-    hooks:
-    -   id: pydocstyle
-        exclude: &exclude_files >
-            (?x)^(
-                docs/.*|
-                tests/.*(?<!\.py)$
-            )$
-        args: ['--ignore=D104,D202,D203,D213,D401']
+## Seems to be conflicting with one of the previous pre-commits (e.g. on the number of empty
+## lines after a class docstring)
+#-   repo: https://github.com/PyCQA/pydocstyle
+#    rev: 5.0.2
+#    hooks:
+#    -   id: pydocstyle
+#        # NOTE THIS MIGHT NEED TO BE MOVED LATER, OR SWAP THE DEFINITION AND THE USE OF EXCLUDE IF YOU UNCOMMENT
+#        exclude: *exclude_files
+#        args: ['--ignore=D104,D202,D203,D213,D401']
 
 -   repo: https://github.com/pre-commit/mirrors-yapf
     rev: v0.30.0
@@ -47,4 +46,8 @@ repos:
     hooks:
     -   id: pylint
         language: system
-        exclude: *exclude_files
+        exclude: &exclude_files >
+            (?x)^(
+                docs/.*|
+                tests/.*(?<!\.py)$
+            )$
