@@ -16,7 +16,7 @@ jobs:
 
       - name: Install python dependencies
         run: |
-          pip install pre-commit
+          pip install pre-commit pylint==2.6.0
 
       - name: Run pre-commit
         run:
