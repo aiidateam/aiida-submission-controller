@@ -23,7 +23,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         super().__init__(*args, **kwargs)
         self._parent_group_label = parent_group_label
         # Load the group (this also ensures it exists)
-        self._parent_group = orm.Group.objects.get(self.parent_group_label)
+        self._parent_group = orm.load_group(self.parent_group_label)
 
     @property
     def parent_group_label(self):
@@ -41,7 +41,11 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         assert len(extras_values) == len(
             extras_projections
         ), f'The extras must be of length {len(extras_projections)}'
-        filters = {'and': dict(zip(extras_projections, extras_values))}
+        filters = {
+            'and': [{
+                proj: val
+            } for proj, val in zip(extras_projections, extras_values)]
+        }
 
         qbuild = orm.QueryBuilder()
         qbuild.append(orm.Group,
@@ -54,7 +58,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
                       with_group='group')
         qbuild.limit(2)
         results = qbuild.all(flat=True)
-        if len(all) != 1:
+        if len(results) != 1:
             raise ValueError(
                 "I would have expected only 1 result for extras={extras}, I found {'>1' if len(qbuild) else '0'}"
             )
