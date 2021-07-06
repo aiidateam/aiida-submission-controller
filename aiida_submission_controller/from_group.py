@@ -23,7 +23,8 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         super().__init__(*args, **kwargs)
         self._parent_group_label = parent_group_label
         # Load the group (this also ensures it exists)
-        self._parent_group = orm.Group.objects.get(label=self.parent_group_label)
+        self._parent_group = orm.Group.objects.get(
+            label=self.parent_group_label)
 
     @property
     def parent_group_label(self):
@@ -86,7 +87,9 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         # the inner lists are not hashable
         results = [tuple(_) for _ in results]
         for res in results:
-            assert all(extra is not None for extra in res), "There is at least one of the nodes in the parent group that does not define one of the required extras."
+            assert all(
+                extra is not None for extra in res
+            ), 'There is at least one of the nodes in the parent group that does not define one of the required extras.'
         results_set = set(results)
 
         assert len(results) == len(
