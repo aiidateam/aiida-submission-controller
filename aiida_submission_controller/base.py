@@ -107,6 +107,9 @@ class BaseSubmissionController:
                                 process_projections=projections)
         all_submitted = {}
         for data in qbuild.all():
+            # Skip nodes without (all of) the right extras
+            if any(extra is None for extra in data[:-1]):
+                continue
             all_submitted[tuple(data[:-1])] = data[-1]
 
         return all_submitted

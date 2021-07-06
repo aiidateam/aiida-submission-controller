@@ -23,7 +23,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         super().__init__(*args, **kwargs)
         self._parent_group_label = parent_group_label
         # Load the group (this also ensures it exists)
-        self._parent_group = orm.Group.objects.get(self.parent_group_label)
+        self._parent_group = orm.Group.objects.get(label=self.parent_group_label)
 
     @property
     def parent_group_label(self):
@@ -81,9 +81,14 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
                       with_group='group')
         results = qbuild.all()
 
-        # I return sorted results for reproducibility of the order of execution
-        results = sorted(results)
+        # I return a set of results as required by the API
+        # First, however, convert to a list of tuples otherwise
+        # the inner lists are not hashable
+        results = [tuple(_) for _ in results]
+        for res in results:
+            assert all(extra is not None for extra in res), "There is at least one of the nodes in the parent group that does not define one of the required extras."
+        results_set = set(results)
 
-        assert len(set(results)) == len(
-            results), 'There are duplicate extras in the parent group'
-        return results
+        assert len(results) == len(
+            results_set), 'There are duplicate extras in the parent group'
+        return results_set
