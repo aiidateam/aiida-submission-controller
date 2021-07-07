@@ -42,7 +42,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         assert len(extras_values) == len(
             extras_projections
         ), f'The extras must be of length {len(extras_projections)}'
-        filters = {'and': dict(zip(extras_projections, extras_values))}
+        filters = dict(zip(extras_projections, extras_values))
 
         qbuild = orm.QueryBuilder()
         qbuild.append(orm.Group,
@@ -55,7 +55,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
                       with_group='group')
         qbuild.limit(2)
         results = qbuild.all(flat=True)
-        if len(all) != 1:
+        if len(results) != 1:
             raise ValueError(
                 "I would have expected only 1 result for extras={extras}, I found {'>1' if len(qbuild) else '0'}"
             )
