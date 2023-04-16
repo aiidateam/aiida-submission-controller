@@ -50,6 +50,7 @@ disable = [
     "import-outside-toplevel",
     "inconsistent-return-statements",
     "locally-disabled",
+    "logging-fstring-interpolation",
     "no-else-raise",
     "too-few-public-methods",
     "too-many-ancestors",
@@ -71,4 +72,9 @@ good-names = [
     "pk",
     "qb",
     "qr"
+]
+
+ignored-modules = [
+    "aiida",
+    "qe_tools"
 ]
