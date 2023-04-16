@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 import abc
-
+import logging
 from aiida import engine, orm
+
+CMDLINE_LOGGER = logging.getLogger('verdi')
 
 
 class BaseSubmissionController:
@@ -166,8 +168,9 @@ class BaseSubmissionController:
         """Number of processes that have already been submitted (and might or might not have finished)."""
         return len(self._check_submitted_extras())
 
-    def submit_new_batch(self, dry_run=False, sort=True):
+    def submit_new_batch(self, dry_run=False, sort=True, verbose=False):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
+        CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
         to_submit = []
         extras_to_run = set(self.get_all_extras_to_submit()).difference(
             self._check_submitted_extras())
@@ -184,17 +187,27 @@ class BaseSubmissionController:
 
         submitted = {}
         for workchain_extras in to_submit:
-            # Get the inputs and the process calculation for submission
-            inputs, process_class = self.get_inputs_and_processclass_from_extras(
-                workchain_extras)
+            try:
+                # Get the inputs and the process calculation for submission
+                inputs, process_class = self.get_inputs_and_processclass_from_extras(
+                    workchain_extras)
 
-            # Actually submit
-            res = engine.submit(process_class, **inputs)
-            # Add extras, and put in group
-            res.set_extra_many(
-                dict(zip(self.get_extra_unique_keys(), workchain_extras)))
-            self.group.add_nodes([res])
-            submitted[workchain_extras] = res
+                # Actually submit
+                wc_node = engine.submit(process_class, **inputs)
+
+            except (ValueError, TypeError) as exc:
+                CMDLINE_LOGGER.error(
+                    f'Failed to submit work chain for extras <{workchain_extras}>: {exc}'
+                )
+            else:
+                CMDLINE_LOGGER.report(
+                    f'Submitted work chain <{wc_node}> for extras <{workchain_extras}>.'
+                )
+                # Add extras, and put in group
+                wc_node.set_extra_many(
+                    dict(zip(self.get_extra_unique_keys(), workchain_extras)))
+                self.group.add_nodes([wc_node])
+                submitted[workchain_extras] = wc_node
 
         return submitted
 
