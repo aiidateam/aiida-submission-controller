@@ -7,7 +7,7 @@ from aiida import engine, orm
 from aiida.common import NotExistent
 from pydantic import BaseModel, validator
 
-CMDLINE_LOGGER = logging.getLogger('verdi')
+CMDLINE_LOGGER = logging.getLogger("verdi")
 
 
 def validate_group_exists(value: str) -> str:
@@ -15,8 +15,7 @@ def validate_group_exists(value: str) -> str:
     try:
         orm.Group.collection.get(label=value)
     except NotExistent as exc:
-        raise ValueError(
-            f'Group with label `{value}` does not exist.') from exc
+        raise ValueError(f"Group with label `{value}` does not exist.") from exc
     else:
         return value
 
@@ -26,13 +25,15 @@ class BaseSubmissionController(BaseModel):
 
     This is an abstract base class: you need to subclass it and define the abstract methods.
     """
+
     group_label: str
     """Label of the group to store the process nodes in."""
     max_concurrent: int
     """Maximum concurrent active processes."""
 
-    _validate_group_exists = validator('group_label',
-                                       allow_reuse=True)(validate_group_exists)
+    _validate_group_exists = validator("group_label", allow_reuse=True)(
+        validate_group_exists
+    )
 
     @property
     def group(self):
@@ -54,23 +55,20 @@ class BaseSubmissionController(BaseModel):
         filters = {}
         if only_active:
             filters = {
-                'or': [{
-                    'attributes.sealed': False
-                }, {
-                    'attributes': {
-                        '!has_key': 'sealed'
-                    }
-                }]
+                "or": [
+                    {"attributes.sealed": False},
+                    {"attributes": {"!has_key": "sealed"}},
+                ]
             }
 
-        qbuild.append(orm.Group,
-                      filters={'label': self.group_label},
-                      tag='group')
-        qbuild.append(orm.ProcessNode,
-                      project=process_projections,
-                      filters=filters,
-                      tag='process',
-                      with_group='group')
+        qbuild.append(orm.Group, filters={"label": self.group_label}, tag="group")
+        qbuild.append(
+            orm.ProcessNode,
+            project=process_projections,
+            filters=filters,
+            tag="process",
+            with_group="group",
+        )
         return qbuild
 
     def get_process_extra_projections(self):
@@ -81,10 +79,7 @@ class BaseSubmissionController(BaseModel):
 
         The idea is to be used as ``process_projections`` for ``get_query()``.
         """
-        return [
-            f'extras.{unique_key}'
-            for unique_key in self.get_extra_unique_keys()
-        ]
+        return [f"extras.{unique_key}" for unique_key in self.get_extra_unique_keys()]
 
     def get_all_submitted_pks(self):
         """Return a dictionary of all processes that have been already submitted (i.e., are in the group).
@@ -98,10 +93,9 @@ class BaseSubmissionController(BaseModel):
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = self.get_process_extra_projections() + ['id']
+        projections = self.get_process_extra_projections() + ["id"]
 
-        qbuild = self.get_query(only_active=False,
-                                process_projections=projections)
+        qbuild = self.get_query(only_active=False, process_projections=projections)
         all_submitted = {}
         for data in qbuild.all():
             # Skip nodes without (all of) the right extras
@@ -123,10 +117,11 @@ class BaseSubmissionController(BaseModel):
 
         :note: this returns all processes, both active and completed (sealed).
         """
-        projections = self.get_process_extra_projections() + ['*']
+        projections = self.get_process_extra_projections() + ["*"]
 
-        qbuild = self.get_query(only_active=only_active,
-                                process_projections=projections)
+        qbuild = self.get_query(
+            only_active=only_active, process_projections=projections
+        )
         all_submitted = {}
         for data in qbuild.all():
             all_submitted[tuple(data[:-1])] = data[-1]
@@ -139,7 +134,7 @@ class BaseSubmissionController(BaseModel):
 
     def _count_active_in_group(self):
         """Count how many active (unsealed) processes there are in the group."""
-        qbuild = self.get_query(process_projections=['id'], only_active=True)
+        qbuild = self.get_query(process_projections=["id"], only_active=True)
         return qbuild.count()
 
     @property
@@ -155,8 +150,9 @@ class BaseSubmissionController(BaseModel):
     @property
     def num_to_run(self):
         """Number of processes that still have to be submitted."""
-        return len(self.get_all_extras_to_submit().difference(
-            self._check_submitted_extras()))
+        return len(
+            self.get_all_extras_to_submit().difference(self._check_submitted_extras())
+        )
 
     @property
     def num_already_run(self):
@@ -168,12 +164,12 @@ class BaseSubmissionController(BaseModel):
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
         to_submit = []
         extras_to_run = set(self.get_all_extras_to_submit()).difference(
-            self._check_submitted_extras())
+            self._check_submitted_extras()
+        )
         if sort:
             extras_to_run = sorted(extras_to_run)
         for workchain_extras in extras_to_run:
-            if len(to_submit) + self._count_active_in_group(
-            ) >= self.max_concurrent:
+            if len(to_submit) + self._count_active_in_group() >= self.max_concurrent:
                 break
             to_submit.append(workchain_extras)
 
@@ -184,23 +180,23 @@ class BaseSubmissionController(BaseModel):
         for workchain_extras in to_submit:
             try:
                 # Get the inputs and the process calculation for submission
-                inputs, process_class = self.get_inputs_and_processclass_from_extras(
-                    workchain_extras)
+                builder = self.get_inputs_and_processclass_from_extras(workchain_extras)
 
                 # Actually submit
-                wc_node = engine.submit(process_class, **inputs)
+                wc_node = engine.submit(builder)
 
             except (ValueError, TypeError) as exc:
                 CMDLINE_LOGGER.error(
-                    f'Failed to submit work chain for extras <{workchain_extras}>: {exc}'
+                    f"Failed to submit work chain for extras <{workchain_extras}>: {exc}"
                 )
             else:
                 CMDLINE_LOGGER.report(
-                    f'Submitted work chain <{wc_node}> for extras <{workchain_extras}>.'
+                    f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>."
                 )
                 # Add extras, and put in group
                 wc_node.set_extra_many(
-                    dict(zip(self.get_extra_unique_keys(), workchain_extras)))
+                    dict(zip(self.get_extra_unique_keys(), workchain_extras))
+                )
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
 

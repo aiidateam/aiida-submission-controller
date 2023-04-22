@@ -8,18 +8,22 @@ from pydantic import validator
 from .base import BaseSubmissionController, validate_group_exists
 
 
-class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disable=abstract-method
+class FromGroupSubmissionController(
+    BaseSubmissionController
+):  # pylint: disable=abstract-method
     """SubmissionController implementation getting data to submit from a parent group.
 
     This is (still) an abstract base class: you need to subclass it
     and define the abstract methods.
     """
+
     parent_group_label: str
     """Label of the parent group from which to construct the process inputs."""
     filters: Optional[dict] = None
 
-    _validate_group_exists = validator('parent_group_label',
-                                       allow_reuse=True)(validate_group_exists)
+    _validate_group_exists = validator("parent_group_label", allow_reuse=True)(
+        validate_group_exists
+    )
 
     @property
     def parent_group(self):
@@ -31,18 +35,14 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         extras_projections = self.get_process_extra_projections()
         assert len(extras_values) == len(
             extras_projections
-        ), f'The extras must be of length {len(extras_projections)}'
+        ), f"The extras must be of length {len(extras_projections)}"
         filters = dict(zip(extras_projections, extras_values))
 
         qbuild = orm.QueryBuilder()
-        qbuild.append(orm.Group,
-                      filters={'id': self.parent_group.pk},
-                      tag='group')
-        qbuild.append(orm.Node,
-                      project='*',
-                      filters=filters,
-                      tag='process',
-                      with_group='group')
+        qbuild.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
+        qbuild.append(
+            orm.Node, project="*", filters=filters, tag="process", with_group="group"
+        )
         qbuild.limit(2)
         results = qbuild.all(flat=True)
         if len(results) != 1:
@@ -63,14 +63,14 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         extras_projections = self.get_process_extra_projections()
 
         qbuild = orm.QueryBuilder()
-        qbuild.append(orm.Group,
-                      filters={'id': self.parent_group.pk},
-                      tag='group')
-        qbuild.append(orm.Node,
-                      project=extras_projections,
-                      filters=self.filters,
-                      tag='process',
-                      with_group='group')
+        qbuild.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
+        qbuild.append(
+            orm.Node,
+            project=extras_projections,
+            filters=self.filters,
+            tag="process",
+            with_group="group",
+        )
         results = qbuild.all()
 
         # I return a set of results as required by the API
@@ -80,9 +80,10 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         for res in results:
             assert all(
                 extra is not None for extra in res
-            ), 'There is at least one of the nodes in the parent group that does not define one of the required extras.'
+            ), "There is at least one of the nodes in the parent group that does not define one of the required extras."
         results_set = set(results)
 
         assert len(results) == len(
-            results_set), 'There are duplicate extras in the parent group'
+            results_set
+        ), "There are duplicate extras in the parent group"
         return results_set

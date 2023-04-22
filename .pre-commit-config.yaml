@@ -2,7 +2,6 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.5.0
     hooks:
-    -   id: double-quote-string-fixer
     -   id: end-of-file-fixer
     -   id: fix-encoding-pragma
     -   id: mixed-line-ending
@@ -27,24 +26,11 @@ repos:
     hooks:
     -   id: isort
 
-## Seems to be conflicting with one of the previous pre-commits (e.g. on the number of empty
-## lines after a class docstring)
-#-   repo: https://github.com/PyCQA/pydocstyle
-#    rev: 5.0.2
-#    hooks:
-#    -   id: pydocstyle
-#        # NOTE THIS MIGHT NEED TO BE MOVED LATER, OR SWAP THE DEFINITION AND THE USE OF EXCLUDE IF YOU UNCOMMENT
-#        exclude: *exclude_files
-#        args: ['--ignore=D104,D202,D203,D213,D401']
-
--   repo: https://github.com/pre-commit/mirrors-yapf
-    rev: v0.30.0
+-   repo: https://github.com/psf/black
+    rev: 23.3.0
     hooks:
-    -   id: yapf
-        name: yapf
-        types: [python]
-        args: ['-i']
-        exclude: 'docs/source/conf.py'
+      - id: black
+        language_version: python3.9
 
 -   repo: https://github.com/PyCQA/pylint
     rev: pylint-2.6.0
