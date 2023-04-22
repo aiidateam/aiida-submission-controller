@@ -31,9 +31,7 @@ class BaseSubmissionController(BaseModel):
     max_concurrent: int
     """Maximum concurrent active processes."""
 
-    _validate_group_exists = validator("group_label", allow_reuse=True)(
-        validate_group_exists
-    )
+    _validate_group_exists = validator("group_label", allow_reuse=True)(validate_group_exists)
 
     @property
     def group(self):
@@ -119,9 +117,7 @@ class BaseSubmissionController(BaseModel):
         """
         projections = self.get_process_extra_projections() + ["*"]
 
-        qbuild = self.get_query(
-            only_active=only_active, process_projections=projections
-        )
+        qbuild = self.get_query(only_active=only_active, process_projections=projections)
         all_submitted = {}
         for data in qbuild.all():
             all_submitted[tuple(data[:-1])] = data[-1]
@@ -150,9 +146,7 @@ class BaseSubmissionController(BaseModel):
     @property
     def num_to_run(self):
         """Number of processes that still have to be submitted."""
-        return len(
-            self.get_all_extras_to_submit().difference(self._check_submitted_extras())
-        )
+        return len(self.get_all_extras_to_submit().difference(self._check_submitted_extras()))
 
     @property
     def num_already_run(self):
@@ -163,9 +157,7 @@ class BaseSubmissionController(BaseModel):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
         to_submit = []
-        extras_to_run = set(self.get_all_extras_to_submit()).difference(
-            self._check_submitted_extras()
-        )
+        extras_to_run = set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras())
         if sort:
             extras_to_run = sorted(extras_to_run)
         for workchain_extras in extras_to_run:
@@ -186,17 +178,11 @@ class BaseSubmissionController(BaseModel):
                 wc_node = engine.submit(builder)
 
             except (ValueError, TypeError) as exc:
-                CMDLINE_LOGGER.error(
-                    f"Failed to submit work chain for extras <{workchain_extras}>: {exc}"
-                )
+                CMDLINE_LOGGER.error(f"Failed to submit work chain for extras <{workchain_extras}>: {exc}")
             else:
-                CMDLINE_LOGGER.report(
-                    f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>."
-                )
+                CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
                 # Add extras, and put in group
-                wc_node.set_extra_many(
-                    dict(zip(self.get_extra_unique_keys(), workchain_extras))
-                )
+                wc_node.set_extra_many(dict(zip(self.get_extra_unique_keys(), workchain_extras)))
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
 

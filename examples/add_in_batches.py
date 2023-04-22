@@ -18,9 +18,7 @@ class AdditionTableSubmissionController(BaseSubmissionController):
         plugin_type = orm.load_code(value).default_calc_job_plugin
         if plugin_type == "core.arithmetic.add":
             return value
-        raise ValueError(
-            f"Code with label `{value}` has incorrect plugin type: `{plugin_type}`"
-        )
+        raise ValueError(f"Code with label `{value}` has incorrect plugin type: `{plugin_type}`")
 
     def get_extra_unique_keys(self):
         """Return a tuple of the keys of the unique extras that will be used to uniquely identify your workchains.

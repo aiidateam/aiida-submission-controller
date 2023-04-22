@@ -29,9 +29,7 @@ class PwBaseSubmissionController(BaseSubmissionController):
         self._code = orm.load_code(identifier=pw_code_id)
         self._process_class = plugins.WorkflowFactory(self.WORKFLOW_ENTRY_POINT)
         self._structure_group = orm.load_group(identifier=structure_group_id)
-        self._structure_filters = (
-            structure_filters if structure_filters is not None else {}
-        )
+        self._structure_filters = structure_filters if structure_filters is not None else {}
         self._pseudo_family = orm.load_group(identifier=pseudo_family_id)
 
     def get_extra_unique_keys(self) -> ty.Tuple[str]:
@@ -43,9 +41,7 @@ class PwBaseSubmissionController(BaseSubmissionController):
         pseudo_family_elements = set(self._pseudo_family.elements)
 
         qbuild = orm.QueryBuilder()
-        qbuild.append(
-            orm.Group, filters={"label": self._structure_group.label}, tag="group"
-        )
+        qbuild.append(orm.Group, filters={"label": self._structure_group.label}, tag="group")
         qbuild.append(
             orm.StructureData,
             project=["extras.mpid", "attributes.kinds"],
@@ -65,14 +61,10 @@ class PwBaseSubmissionController(BaseSubmissionController):
         # all_extras = set((mpid,) for mpid in qb.all(flat=True))
         return all_extras
 
-    def _get_structure_from_extras(
-        self, extras_values: ty.Tuple[str]
-    ) -> orm.StructureData:
+    def _get_structure_from_extras(self, extras_values: ty.Tuple[str]) -> orm.StructureData:
         """Get a structure from the values of the extras."""
         qbuild = orm.QueryBuilder()
-        qbuild.append(
-            orm.Group, filters={"label": self._structure_group.label}, tag="group"
-        )
+        qbuild.append(orm.Group, filters={"label": self._structure_group.label}, tag="group")
         qbuild.append(
             orm.StructureData,
             project="*",
@@ -87,9 +79,7 @@ class PwBaseSubmissionController(BaseSubmissionController):
         """Construct the inputs and get the process class from the values of the uniquely identifying extras."""
         structure = self._get_structure_from_extras(extras_values)
         pseudos = self._pseudo_family.get_pseudos(structure=structure)
-        ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(
-            structure=structure
-        )
+        ecutwfc, ecutrho = self._pseudo_family.get_recommended_cutoffs(structure=structure)
         metadata = {
             "options": {
                 "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 1},
