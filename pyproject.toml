@@ -27,7 +27,8 @@ classifiers = [
 requires-python = ">=3.6"
 
 dependencies = [
-    "aiida-core>=1.0"
+    "aiida-core>=1.0",
+    "pydantic~=1.10.4",
 ]
 
 [project.urls]
@@ -37,6 +38,16 @@ Source = "https://github.com/aiidateam/aiida-submission-controller"
 qe = [
     "aiida-quantumespresso"
 ]
+dev = [
+    "pre-commit~=2.17.0",
+    "pylint-pydantic~=0.1.8"
+]
+
+[tool.pylint.master]
+load-plugins = "pylint_pydantic"
+
+[tool.pylint.'MESSAGES CONTROL']
+extension-pkg-whitelist = "pydantic"
 
 [tool.pylint.format]
 max-line-length = 120
