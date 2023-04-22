@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many."""
+from typing import Optional
+
 from aiida import orm
 from pydantic import validator
 
@@ -14,6 +16,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     """
     parent_group_label: str
     """Label of the parent group from which to construct the process inputs."""
+    filters: Optional[dict] = None
 
     _validate_group_exists = validator('parent_group_label',
                                        allow_reuse=True)(validate_group_exists)
@@ -65,6 +68,7 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
                       tag='group')
         qbuild.append(orm.Node,
                       project=extras_projections,
+                      filters=self.filters,
                       tag='process',
                       with_group='group')
         results = qbuild.all()
