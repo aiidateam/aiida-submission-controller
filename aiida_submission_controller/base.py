@@ -2,47 +2,42 @@
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 import abc
 import logging
+
 from aiida import engine, orm
+from aiida.common import NotExistent
+from pydantic import BaseModel, validator
 
 CMDLINE_LOGGER = logging.getLogger('verdi')
 
 
-class BaseSubmissionController:
+def validate_group_exists(value: str) -> str:
+    """Validator that makes sure the ``Group`` with the provided label exists."""
+    try:
+        orm.Group.collection.get(label=value)
+    except NotExistent as exc:
+        raise ValueError(
+            f'Group with label `{value}` does not exist.') from exc
+    else:
+        return value
+
+
+class BaseSubmissionController(BaseModel):
     """Controller to submit a maximum number of processes (workflows or calculations) at a given time.
 
     This is an abstract base class: you need to subclass it and define the abstract methods.
     """
-    def __init__(self, group_label, max_concurrent):
-        """Create a new controller to manage (and limit) concurrent submissions.
+    group_label: str
+    """Label of the group to store the process nodes in."""
+    max_concurrent: int
+    """Maximum concurrent active processes."""
 
-        :param group_label: a group label: the group will be created at instantiation (if not existing already,
-            and it will be used to manage the calculations)
-        :param extra_unique_keys: a tuple or list of keys of extras that are used to uniquely identify
-            a process in the group. E.g. ('value1', 'value2').
-
-        :note: try to use actual values that allow for an equality comparison (strings, bools, integers), and avoid
-           floats, because of truncation errors.
-        """
-        self._group_label = group_label
-        self._max_concurrent = max_concurrent
-
-        # Create the group if needed
-        self._group, _ = orm.Group.objects.get_or_create(self.group_label)
-
-    @property
-    def group_label(self):
-        """Return the label of the group that is managed by this class."""
-        return self._group_label
+    _validate_group_exists = validator('group_label',
+                                       allow_reuse=True)(validate_group_exists)
 
     @property
     def group(self):
         """Return the AiiDA ORM Group instance that is managed by this class."""
-        return self._group
-
-    @property
-    def max_concurrent(self):
-        """Value of the maximum number of concurrent processes that can be run."""
-        return self._max_concurrent
+        return orm.Group.objects.get(label=self.group_label)
 
     def get_query(self, process_projections, only_active=False):
         """Return a QueryBuilder object to get all processes in the group associated to this.

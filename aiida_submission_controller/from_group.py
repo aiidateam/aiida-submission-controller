@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 from aiida import orm
-from .base import BaseSubmissionController
+from pydantic import validator
+
+from .base import BaseSubmissionController, validate_group_exists
 
 
 class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disable=abstract-method
@@ -10,31 +12,16 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     This is (still) an abstract base class: you need to subclass it
     and define the abstract methods.
     """
-    def __init__(self, parent_group_label, *args, **kwargs):
-        """Create a new controller to manage (and limit) concurrent submissions.
+    parent_group_label: str
+    """Label of the parent group from which to construct the process inputs."""
 
-        :param parent_group_label: a group label: the group will be used to decide
-          which submissions to use. The group must already exist. Extras (in the method
-          `get_all_extras_to_submit`) will be returned from all extras in that group
-          (you need to make sure they are unique).
-
-        For all other parameters, see the docstring of ``BaseSubmissionController.__init__``.
-        """
-        super().__init__(*args, **kwargs)
-        self._parent_group_label = parent_group_label
-        # Load the group (this also ensures it exists)
-        self._parent_group = orm.Group.objects.get(
-            label=self.parent_group_label)
-
-    @property
-    def parent_group_label(self):
-        """Return the label of the parent group that is used as a reference."""
-        return self._parent_group_label
+    _validate_group_exists = validator('parent_group_label',
+                                       allow_reuse=True)(validate_group_exists)
 
     @property
     def parent_group(self):
         """Return the AiiDA ORM Group instance of the parent group."""
-        return self._parent_group
+        return orm.Group.objects.get(label=self.parent_group_label)
 
     def get_parent_node_from_extras(self, extras_values):
         """Return the Node instance (in the parent group) from the (unique) extras identifying it."""

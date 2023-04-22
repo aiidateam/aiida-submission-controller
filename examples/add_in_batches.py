@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 """An example of a SubmissionController implementation to compute a 12x12 table of additions."""
+from aiida import orm
+from aiida.plugins import CalculationFactory
+from pydantic import validator
 
-from aiida import orm, plugins
 from aiida_submission_controller import BaseSubmissionController
 
 
 class AdditionTableSubmissionController(BaseSubmissionController):
     """The implementation of a SubmissionController to compute a 12x12 table of additions."""
-    def __init__(self, code_name, *args, **kwargs):
-        """Pass also a code name, that should be a code associated to an `arithmetic.add` plugin."""
-        super().__init__(*args, **kwargs)
-        self._code = orm.load_code(code_name)
-        self._process_class = plugins.CalculationFactory('arithmetic.add')
+    code_label: str
+    """Label of the `code.arithmetic.add` `Code`."""
+    @validator('code_label')
+    def _check_code_plugin(cls, value):
+        plugin_type = orm.load_code(value).default_calc_job_plugin
+        if plugin_type == 'core.arithmetic.add':
+            return value
+        raise ValueError(
+            f'Code with label `{value}` has incorrect plugin type: `{plugin_type}`'
+        )
 
     def get_extra_unique_keys(self):
         """Return a tuple of the keys of the unique extras that will be used to uniquely identify your workchains.
@@ -37,12 +44,13 @@ class AdditionTableSubmissionController(BaseSubmissionController):
         I just submit an ArithmeticAdd calculation summing the two values stored in the extras:
         ``left_operand + right_operand``.
         """
+        code = orm.load_code(self.code_label)
         inputs = {
-            'code': self._code,
+            'code': code,
             'x': orm.Int(extras_values[0]),
             'y': orm.Int(extras_values[1])
         }
-        return inputs, self._process_class
+        return inputs, CalculationFactory(code.get_input_plugin_name())
 
 
 def main():
@@ -55,7 +63,7 @@ def main():
     ##    verdi code setup -L add --on-computer --computer=localhost -P arithmetic.add --remote-abs-path=/bin/bash -n
     # Create a controller
     controller = AdditionTableSubmissionController(
-        code_name='add@localhost',
+        code_label='add@localhost',
         group_label='tests/addition_table',
         max_concurrent=10)
 
