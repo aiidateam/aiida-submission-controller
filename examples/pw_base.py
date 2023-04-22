@@ -4,9 +4,8 @@
 import typing as ty
 import warnings
 
-from qe_tools import CONSTANTS
-
 from aiida import load_profile, orm, plugins
+from qe_tools import CONSTANTS
 
 from aiida_submission_controller import BaseSubmissionController
 

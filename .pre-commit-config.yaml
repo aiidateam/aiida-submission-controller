@@ -22,6 +22,11 @@ repos:
             '--fail-on-change',
         ]
 
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+    -   id: isort
+
 ## Seems to be conflicting with one of the previous pre-commits (e.g. on the number of empty
 ## lines after a class docstring)
 #-   repo: https://github.com/PyCQA/pydocstyle
