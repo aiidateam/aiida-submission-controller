@@ -218,6 +218,32 @@ class BaseSubmissionController(BaseModel):
             else:
                 print(f"[bold blue]Info:[/] 🚀 Submitting {number_to_submit} new workchains!")
 
+        if verbose:
+            table = Table(title="Status")
+
+            table.add_column("Total", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Finished", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Left to run", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Max active", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Active", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Available", justify="left", style="cyan", no_wrap=True)
+
+            table.add_row(
+                str(self.parent_group.count()),
+                str(self.num_already_run),
+                str(self.num_to_run),
+                str(self.max_concurrent),
+                str(self.num_active_slots),
+                str(self.num_available_slots),
+            )
+            console = Console()
+            console.print(table)
+
+            if len(to_submit) == 0:
+                print("[bold blue]Info:[/] 😴 Nothing to submit.")
+            else:
+                print(f"[bold blue]Info:[/] 🚀 Submitting {len(to_submit)} new workchains!")
+
         submitted = {}
 
         for workchain_extras in extras_to_run:
@@ -231,7 +257,7 @@ class BaseSubmissionController(BaseModel):
                 # Actually submit
                 wc_node = engine.submit(builder)
 
-            except Exception as exc:
+            except (ValueError, TypeError, AttributeError) as exc:
                 CMDLINE_LOGGER.error(f"Failed to submit work chain for extras <{workchain_extras}>: {exc}")
             else:
                 CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
