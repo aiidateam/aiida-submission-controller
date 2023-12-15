@@ -18,6 +18,9 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     parent_group_label: str
     """Label of the parent group from which to construct the process inputs."""
     filters: Optional[dict] = None
+    """Filters applied to the query of the nodes in the parent group."""
+    order_by: Optional[dict] = None
+    """Ordering applied to the query of the nodes in the parent group."""
 
     _validate_group_exists = validator("parent_group_label", allow_reuse=True)(validate_group_exists)
 
@@ -63,6 +66,10 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
             tag="process",
             with_group="group",
         )
+
+        if self.order_by is not None:
+            qbuild.order_by(self.order_by)
+
         results = qbuild.all()
 
         # I return a set of results as required by the API
