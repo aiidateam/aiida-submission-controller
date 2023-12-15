@@ -7,6 +7,9 @@ from typing import Optional
 from aiida import engine, orm
 from aiida.common import NotExistent
 from pydantic import BaseModel, validator
+from rich import print
+from rich.console import Console
+from rich.table import Table
 
 CMDLINE_LOGGER = logging.getLogger("verdi")
 
@@ -170,6 +173,32 @@ class BaseSubmissionController(BaseModel):
 
         if dry_run:
             return {key: None for key in to_submit}
+
+        if verbose:
+            table = Table(title="Status")
+
+            table.add_column("Total", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Finished", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Left to run", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Max active", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Active", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Available", justify="left", style="cyan", no_wrap=True)
+
+            table.add_row(
+                str(self.parent_group.count()),
+                str(self.num_already_run),
+                str(self.num_to_run),
+                str(self.max_concurrent),
+                str(self.num_active_slots),
+                str(self.num_available_slots),
+            )
+            console = Console()
+            console.print(table)
+
+            if len(to_submit) == 0:
+                print("[bold blue]Info:[/] 😴 Nothing to submit.")
+            else:
+                print(f"[bold blue]Info:[/] 🚀 Submitting {len(to_submit)} new workchains!")
 
         submitted = {}
         for workchain_extras in to_submit:
