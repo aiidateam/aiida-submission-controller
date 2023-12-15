@@ -2,6 +2,7 @@
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 import abc
 import logging
+from typing import Optional
 
 from aiida import engine, orm
 from aiida.common import NotExistent
@@ -30,6 +31,8 @@ class BaseSubmissionController(BaseModel):
     """Label of the group to store the process nodes in."""
     max_concurrent: int
     """Maximum concurrent active processes."""
+    unique_extra_keys: Optional[tuple]
+    """List of keys defined in the extras that uniquely define each process to be run."""
 
     _validate_group_exists = validator("group_label", allow_reuse=True)(validate_group_exists)
 
@@ -177,7 +180,7 @@ class BaseSubmissionController(BaseModel):
                 # Actually submit
                 wc_node = engine.submit(builder)
 
-            except (ValueError, TypeError) as exc:
+            except (ValueError, TypeError, AttributeError) as exc:
                 CMDLINE_LOGGER.error(f"Failed to submit work chain for extras <{workchain_extras}>: {exc}")
             else:
                 CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
@@ -188,10 +191,9 @@ class BaseSubmissionController(BaseModel):
 
         return submitted
 
-    @abc.abstractmethod
     def get_extra_unique_keys(self):
         """Return a tuple of the kes of the unique extras that will be used to uniquely identify your workchains."""
-        return
+        return self.unique_extra_keys
 
     @abc.abstractmethod
     def get_all_extras_to_submit(self):
