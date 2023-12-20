@@ -212,7 +212,7 @@ class BaseSubmissionController(BaseModel):
                 # Actually submit
                 wc_node = engine.submit(builder)
 
-            except (ValueError, TypeError, AttributeError) as exc:
+            except Exception as exc:
                 CMDLINE_LOGGER.error(f"Failed to submit work chain for extras <{workchain_extras}>: {exc}")
             else:
                 CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
