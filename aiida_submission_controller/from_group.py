@@ -83,4 +83,4 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         results_set = set(results)
 
         assert len(results) == len(results_set), "There are duplicate extras in the parent group"
-        return results_set
+        return results

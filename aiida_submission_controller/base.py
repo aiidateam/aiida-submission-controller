@@ -152,14 +152,14 @@ class BaseSubmissionController(BaseModel):
     @property
     def num_to_run(self):
         """Number of processes that still have to be submitted."""
-        return len(self.get_all_extras_to_submit().difference(self._check_submitted_extras()))
+        return len(set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras()))
 
     @property
     def num_already_run(self):
         """Number of processes that have already been submitted (and might or might not have finished)."""
         return len(self._check_submitted_extras())
 
-    def submit_new_batch(self, dry_run=False, sort=True, verbose=False):
+    def submit_new_batch(self, dry_run=False, sort=False, verbose=False):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
 
