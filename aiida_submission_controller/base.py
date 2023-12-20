@@ -162,23 +162,22 @@ class BaseSubmissionController(BaseModel):
     def submit_new_batch(self, dry_run=False, sort=True, verbose=False):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
-        to_submit = []
+
         extras_to_run = set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras())
+
         if sort:
             extras_to_run = sorted(extras_to_run)
-        for workchain_extras in extras_to_run:
-            if len(to_submit) + self._count_active_in_group() >= self.max_concurrent:
-                break
-            to_submit.append(workchain_extras)
+
+        number_to_submit = self.max_concurrent - self._count_active_in_group()
 
         if dry_run:
-            return {key: None for key in to_submit}
+            return {key: None for key in extras_to_run[:number_to_submit]}
 
         if verbose:
             table = Table(title="Status")
 
             table.add_column("Total", justify="left", style="cyan", no_wrap=True)
-            table.add_column("Finished", justify="left", style="cyan", no_wrap=True)
+            table.add_column("Submitted", justify="left", style="cyan", no_wrap=True)
             table.add_column("Left to run", justify="left", style="cyan", no_wrap=True)
             table.add_column("Max active", justify="left", style="cyan", no_wrap=True)
             table.add_column("Active", justify="left", style="cyan", no_wrap=True)
@@ -195,13 +194,17 @@ class BaseSubmissionController(BaseModel):
             console = Console()
             console.print(table)
 
-            if len(to_submit) == 0:
+            if number_to_submit <= 0:
                 print("[bold blue]Info:[/] 😴 Nothing to submit.")
             else:
-                print(f"[bold blue]Info:[/] 🚀 Submitting {len(to_submit)} new workchains!")
+                print(f"[bold blue]Info:[/] 🚀 Submitting {number_to_submit} new workchains!")
 
         submitted = {}
-        for workchain_extras in to_submit:
+
+        for workchain_extras in extras_to_run:
+            if len(submitted) >= number_to_submit:
+                break
+
             try:
                 # Get the inputs and the process calculation for submission
                 builder = self.get_inputs_and_processclass_from_extras(workchain_extras)
