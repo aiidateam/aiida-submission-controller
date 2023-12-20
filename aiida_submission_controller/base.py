@@ -14,6 +14,25 @@ from rich.table import Table
 CMDLINE_LOGGER = logging.getLogger("verdi")
 
 
+def get_extras_dict(extras_keys, workchain_extras):
+    """Return a dictionary of extras from a list of keys and a list of values."""
+
+    def add_to_nested_dict(nested_dict, key, value):
+        if "." in key:
+            first_key, remaining_keys = key.split(".", 1)
+            nested_dict.setdefault(first_key, {})
+            add_to_nested_dict(nested_dict[first_key], remaining_keys, value)
+        else:
+            nested_dict.setdefault(key, value)
+
+    extras_dict = {}
+
+    for key, value in zip(extras_keys, workchain_extras):
+        add_to_nested_dict(extras_dict, key, value)
+
+    return extras_dict
+
+
 def validate_group_exists(value: str) -> str:
     """Validator that makes sure the ``Group`` with the provided label exists."""
     try:
@@ -216,8 +235,8 @@ class BaseSubmissionController(BaseModel):
                 CMDLINE_LOGGER.error(f"Failed to submit work chain for extras <{workchain_extras}>: {exc}")
             else:
                 CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
-                # Add extras, and put in group
-                wc_node.set_extra_many(dict(zip(self.get_extra_unique_keys(), workchain_extras)))
+
+                wc_node.set_extra_many(get_extras_dict(self.get_extra_unique_keys(), workchain_extras))
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
 
