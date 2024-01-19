@@ -53,8 +53,8 @@ class BaseSubmissionController(BaseModel):
     """Label of the group to store the process nodes in."""
     max_concurrent: int
     """Maximum concurrent active processes."""
-    unique_extra_keys: Optional[tuple]
-    """List of keys defined in the extras that uniquely define each process to be run."""
+    unique_extra_keys: Optional[tuple] = None
+    """Tuple of keys defined in the extras that uniquely define each process to be run."""
 
     _validate_group_exists = validator("group_label", allow_reuse=True)(validate_group_exists)
 
@@ -243,7 +243,7 @@ class BaseSubmissionController(BaseModel):
         return submitted
 
     def get_extra_unique_keys(self):
-        """Return a tuple of the kes of the unique extras that will be used to uniquely identify your workchains."""
+        """Return a tuple of the keys of the unique extras that will be used to uniquely identify your workchains."""
         return self.unique_extra_keys
 
     @abc.abstractmethod
