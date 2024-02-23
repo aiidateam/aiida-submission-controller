@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """An example of a SubmissionController implementation to compute a 12x12 table of additions."""
+import time
+
 from aiida import orm
-from aiida.plugins import CalculationFactory
+from aiida.calculations.arithmetic.add import ArithmeticAddCalculation
 from pydantic import validator
 
 from aiida_submission_controller import BaseSubmissionController
@@ -44,13 +46,12 @@ class AdditionTableSubmissionController(BaseSubmissionController):
         I just submit an ArithmeticAdd calculation summing the two values stored in the extras:
         ``left_operand + right_operand``.
         """
-        code = orm.load_code(self.code_label)
-        inputs = {
-            "code": code,
-            "x": orm.Int(extras_values[0]),
-            "y": orm.Int(extras_values[1]),
-        }
-        return inputs, CalculationFactory(code.get_input_plugin_name())
+        builder = ArithmeticAddCalculation.get_builder()
+        builder.code = orm.load_code(self.code_label)
+        builder.x = orm.Int(extras_values[0])
+        builder.y = orm.Int(extras_values[1])
+
+        return builder
 
 
 def main():
@@ -60,61 +61,67 @@ def main():
     ## IMPORTANT: make sure that you have a `add@localhost` code, that you can setup (once you have a
     ## localhost computer) using the following command, for instance:
     ##
-    ##    verdi code setup -L add --on-computer --computer=localhost -P arithmetic.add --remote-abs-path=/bin/bash -n
+    ##  verdi code setup -L add --on-computer --computer=localhost -P core.arithmetic.add --remote-abs-path=/bin/bash -n
     # Create a controller
+
+    group, _ = orm.Group.objects.get_or_create(label="tests/addition_table")
+
     controller = AdditionTableSubmissionController(
         code_label="add@localhost",
-        group_label="tests/addition_table",
+        group_label=group.label,
         max_concurrent=10,
     )
 
-    print("Max concurrent :", controller.max_concurrent)
-    print("Active slots   :", controller.num_active_slots)
-    print("Available slots:", controller.num_available_slots)
-    print("Already run    :", controller.num_already_run)
-    print("Still to run   :", controller.num_to_run)
-    print()
+    while True:
+        print("Max concurrent :", controller.max_concurrent)
+        print("Active slots   :", controller.num_active_slots)
+        print("Available slots:", controller.num_available_slots)
+        print("Already run    :", controller.num_already_run)
+        print("Still to run   :", controller.num_to_run)
+        print()
 
-    ## Uncomment the following two lines if you just want to do a dry-run without actually submitting anything
-    # print("I would run next:")
-    # print(controller.submit_new_batch(dry_run=True))
+        ## Uncomment the following two lines if you just want to do a dry-run without actually submitting anything
+        # print("I would run next:")
+        # print(controller.submit_new_batch(dry_run=True))
 
-    print("Let's run a new batch!")
-    # Note: the number might differ from controller.num_available_slots shown above, as some more
-    # calculations might be over in the meantime.
-    run_processes = controller.submit_new_batch(dry_run=False)
-    for run_process_extras, run_process in run_processes.items():
-        print(f"{run_process_extras} --> PK = {run_process.pk}")
+        print("Let's run a new batch!")
+        # Note: the number might differ from controller.num_available_slots shown above, as some more
+        # calculations might be over in the meantime.
+        run_processes = controller.submit_new_batch(dry_run=False)
+        for run_process_extras, run_process in run_processes.items():
+            print(f"{run_process_extras} --> PK = {run_process.pk}")
 
-    print()
+        print()
 
-    ## Print results
-    print(">>> RESULTS UP TO NOW:")
-    print("    Legend:")
-    print("      ###: not yet submitted")
-    print("      ???: submitted, but no results (not finished or failed)")
-    all_submitted = controller.get_all_submitted_processes()
-    sys.stdout.write("   |")
-    for right in range(1, 13):
-        sys.stdout.write(f"{right:3d} ")
-    sys.stdout.write("\n")
-    sys.stdout.write("----" + "----" * 12)
-    sys.stdout.write("\n")
-
-    # Print table
-    for left in range(1, 13):
-        sys.stdout.write(f"{left:2d} |")
+        ## Print results
+        print(">>> RESULTS UP TO NOW:")
+        print("    Legend:")
+        print("      ###: not yet submitted")
+        print("      ???: submitted, but no results (not finished or failed)")
+        all_submitted = controller.get_all_submitted_processes()
+        sys.stdout.write("   |")
         for right in range(1, 13):
-            process = all_submitted.get((left, right))
-            if process is None:
-                result = "###"  # No node
-            else:
-                try:
-                    result = f"{process.outputs.sum.value:3d}"
-                except AttributeError:
-                    result = "???"  # Probably not completed, does not have output 'sum'
-            sys.stdout.write(result + " ")
+            sys.stdout.write(f"{right:3d} ")
         sys.stdout.write("\n")
+        sys.stdout.write("----" + "----" * 12)
+        sys.stdout.write("\n")
+
+        # Print table
+        for left in range(1, 13):
+            sys.stdout.write(f"{left:2d} |")
+            for right in range(1, 13):
+                process = all_submitted.get((left, right))
+                if process is None:
+                    result = "###"  # No node
+                else:
+                    try:
+                        result = f"{process.outputs.sum.value:3d}"
+                    except AttributeError:
+                        result = "???"  # Probably not completed, does not have output 'sum'
+                sys.stdout.write(result + " ")
+            sys.stdout.write("\n")
+
+        time.sleep(10)
 
 
 if __name__ == "__main__":
