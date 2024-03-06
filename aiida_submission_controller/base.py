@@ -2,6 +2,7 @@
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 import abc
 import logging
+import time
 from typing import Optional
 
 from aiida import engine, orm
@@ -178,7 +179,7 @@ class BaseSubmissionController(BaseModel):
         """Number of processes that have already been submitted (and might or might not have finished)."""
         return len(self._check_submitted_extras())
 
-    def submit_new_batch(self, dry_run=False, sort=False, verbose=False):
+    def submit_new_batch(self, dry_run=False, sort=False, verbose=False, sleep=0):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
 
@@ -239,6 +240,8 @@ class BaseSubmissionController(BaseModel):
                 wc_node.set_extra_many(get_extras_dict(self.get_extra_unique_keys(), workchain_extras))
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
+                # Only add a delay if the submission was successful
+                time.sleep(sleep)
 
         return submitted
 
