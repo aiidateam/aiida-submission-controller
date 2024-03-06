@@ -183,7 +183,8 @@ class BaseSubmissionController(BaseModel):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
 
-        extras_to_run = list(set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras()))
+        all_extras = set(self.get_all_extras_to_submit())
+        extras_to_run = list(all_extras.difference(self._check_submitted_extras()))
 
         if sort:
             extras_to_run = sorted(extras_to_run)
@@ -204,7 +205,7 @@ class BaseSubmissionController(BaseModel):
             table.add_column("Available", justify="left", style="cyan", no_wrap=True)
 
             table.add_row(
-                str(self.parent_group.count()),
+                str(len(all_extras)),
                 str(self.num_already_run),
                 str(self.num_to_run),
                 str(self.max_concurrent),
