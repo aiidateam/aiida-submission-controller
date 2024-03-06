@@ -2,6 +2,7 @@
 """A prototype class to submit processes in batches, avoiding to submit too many."""
 import abc
 import logging
+import time
 from typing import Optional
 
 from aiida import engine, orm
@@ -178,11 +179,12 @@ class BaseSubmissionController(BaseModel):
         """Number of processes that have already been submitted (and might or might not have finished)."""
         return len(self._check_submitted_extras())
 
-    def submit_new_batch(self, dry_run=False, sort=False, verbose=False):
+    def submit_new_batch(self, dry_run=False, sort=False, verbose=False, sleep=0):
         """Submit a new batch of calculations, ensuring less than self.max_concurrent active at the same time."""
         CMDLINE_LOGGER.level = logging.INFO if verbose else logging.WARNING
 
-        extras_to_run = list(set(self.get_all_extras_to_submit()).difference(self._check_submitted_extras()))
+        all_extras = set(self.get_all_extras_to_submit())
+        extras_to_run = list(all_extras.difference(self._check_submitted_extras()))
 
         if sort:
             extras_to_run = sorted(extras_to_run)
@@ -203,7 +205,7 @@ class BaseSubmissionController(BaseModel):
             table.add_column("Available", justify="left", style="cyan", no_wrap=True)
 
             table.add_row(
-                str(self.parent_group.count()),
+                str(len(all_extras)),
                 str(self.num_already_run),
                 str(self.num_to_run),
                 str(self.max_concurrent),
@@ -239,6 +241,8 @@ class BaseSubmissionController(BaseModel):
                 wc_node.set_extra_many(get_extras_dict(self.get_extra_unique_keys(), workchain_extras))
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
+                # Only add a delay if the submission was successful
+                time.sleep(sleep)
 
         return submitted
 
