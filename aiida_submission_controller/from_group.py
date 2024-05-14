@@ -3,9 +3,9 @@
 from typing import Optional
 
 from aiida import orm
-from pydantic import validator
+from pydantic import field_validator
 
-from .base import BaseSubmissionController, validate_group_exists
+from .base import BaseSubmissionController, _validate_group_exists
 
 
 class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disable=abstract-method
@@ -22,12 +22,15 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     order_by: Optional[dict] = None
     """Ordering applied to the query of the nodes in the parent group."""
 
-    _validate_group_exists = validator("parent_group_label", allow_reuse=True)(validate_group_exists)
+    @field_validator('group_label')
+    @classmethod
+    def validate_group_exists(cls, v: str) -> str:
+        return _validate_group_exists(v)
 
     @property
     def parent_group(self):
         """Return the AiiDA ORM Group instance of the parent group."""
-        return orm.Group.objects.get(label=self.parent_group_label)
+        return orm.Group.collection.get(label=self.parent_group_label)
 
     def get_parent_node_from_extras(self, extras_values):
         """Return the Node instance (in the parent group) from the (unique) extras identifying it."""
@@ -35,14 +38,14 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         assert len(extras_values) == len(extras_projections), f"The extras must be of length {len(extras_projections)}"
         filters = dict(zip(extras_projections, extras_values))
 
-        qbuild = orm.QueryBuilder()
-        qbuild.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
-        qbuild.append(orm.Node, project="*", filters=filters, tag="process", with_group="group")
-        qbuild.limit(2)
-        results = qbuild.all(flat=True)
+        qb = orm.QueryBuilder()
+        qb.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
+        qb.append(orm.Node, project="*", filters=filters, tag="process", with_group="group")
+        qb.limit(2)
+        results = qb.all(flat=True)
         if len(results) != 1:
             raise ValueError(
-                "I would have expected only 1 result for extras={extras}, I found {'>1' if len(qbuild) else '0'}"
+                "I would have expected only 1 result for extras={extras}, I found {'>1' if len(qb) else '0'}"
             )
         return results[0]
 
@@ -57,9 +60,9 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         """
         extras_projections = self.get_process_extra_projections()
 
-        qbuild = orm.QueryBuilder()
-        qbuild.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
-        qbuild.append(
+        qb = orm.QueryBuilder()
+        qb.append(orm.Group, filters={"id": self.parent_group.pk}, tag="group")
+        qb.append(
             orm.Node,
             project=extras_projections,
             filters=self.filters,
@@ -68,9 +71,9 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
         )
 
         if self.order_by is not None:
-            qbuild.order_by(self.order_by)
+            qb.order_by(self.order_by)
 
-        results = qbuild.all()
+        results = qb.all()
 
         # I return a set of results as required by the API
         # First, however, convert to a list of tuples otherwise
