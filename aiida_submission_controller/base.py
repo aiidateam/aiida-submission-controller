@@ -215,10 +215,10 @@ class BaseSubmissionController(BaseModel):
             console = Console()
             console.print(table)
 
-            if number_to_submit <= 0:
+            if number_to_submit <= 0 or self.num_to_run == 0:
                 print("[bold blue]Info:[/] 😴 Nothing to submit.")
             else:
-                print(f"[bold blue]Info:[/] 🚀 Submitting {number_to_submit} new workchains!")
+                print(f"[bold blue]Info:[/] 🚀 Submitting {min(number_to_submit, self.num_to_run)} new workchains!")
 
         submitted = {}
 
