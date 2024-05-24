@@ -17,8 +17,6 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
 
     dynamic_extra: dict = Field(default_factory=dict)
     """A dictionary of dynamic extras to be added to the extras of the process."""
-    unique_extra_keys: tuple = Field(default_factory=tuple)
-    """List of keys defined in the extras that uniquely define each process to be run."""
     parent_group_label: str
     """Label of the parent group from which to construct the process inputs."""
     filters: Optional[dict] = None
@@ -46,7 +44,8 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     def get_extra_unique_keys(self):
         """Return a tuple of the keys of the unique extras that will be used to uniquely identify your workchains."""
         # `_parent_uuid` will be replaced by the `uuid` attribute in the queries
-        combined_extras = ["_parent_uuid"] + list(self.unique_extra_keys) + list(self._dynamic_extra_keys)
+        unique_extra_keys = self.unique_extra_keys or []
+        combined_extras = ["_parent_uuid"] + list(unique_extra_keys) + list(self._dynamic_extra_keys)
         return tuple(combined_extras)
 
     def get_parent_node_from_extras(self, extras_values):
