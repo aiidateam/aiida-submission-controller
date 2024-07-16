@@ -6,7 +6,7 @@ from typing import Optional
 
 from aiida import engine, orm
 from aiida.common import NotExistent
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from rich import print
 from rich.console import Console
 from rich.table import Table
@@ -56,12 +56,16 @@ class BaseSubmissionController(BaseModel):
     unique_extra_keys: Optional[tuple] = None
     """Tuple of keys defined in the extras that uniquely define each process to be run."""
 
-    _validate_group_exists = validator("group_label", allow_reuse=True)(validate_group_exists)
+    @field_validator('group_label')
+    @classmethod
+    def validate_group_exists(cls, value: str) -> str:
+        """Validator that makes sure the ``Group`` with the provided label exists."""
+        return validate_group_exists(value)
 
     @property
     def group(self):
         """Return the AiiDA ORM Group instance that is managed by this class."""
-        return orm.Group.objects.get(label=self.group_label)
+        return orm.Group.collection.get(label=self.group_label)
 
     def get_query(self, process_projections, only_active=False):
         """Return a QueryBuilder object to get all processes in the group associated to this.
@@ -236,7 +240,7 @@ class BaseSubmissionController(BaseModel):
             else:
                 CMDLINE_LOGGER.report(f"Submitted work chain <{wc_node}> for extras <{workchain_extras}>.")
 
-                wc_node.set_extra_many(get_extras_dict(self.get_extra_unique_keys(), workchain_extras))
+                wc_node.base.extras.set_many(get_extras_dict(self.get_extra_unique_keys(), workchain_extras))
                 self.group.add_nodes([wc_node])
                 submitted[workchain_extras] = wc_node
 

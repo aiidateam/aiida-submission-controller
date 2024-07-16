@@ -3,7 +3,7 @@
 from typing import Optional
 
 from aiida import orm
-from pydantic import validator
+from pydantic import field_validator
 
 from .base import BaseSubmissionController, validate_group_exists
 
@@ -22,12 +22,16 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     order_by: Optional[dict] = None
     """Ordering applied to the query of the nodes in the parent group."""
 
-    _validate_group_exists = validator("parent_group_label", allow_reuse=True)(validate_group_exists)
+    @field_validator('parent_group_label')
+    @classmethod
+    def validate_parent_group_exists(cls, value: str) -> str:
+        """Validator that makes sure the parent ``Group`` with the provided label exists."""
+        return validate_group_exists(value)
 
     @property
     def parent_group(self):
         """Return the AiiDA ORM Group instance of the parent group."""
-        return orm.Group.objects.get(label=self.parent_group_label)
+        return orm.Group.collection.get(label=self.parent_group_label)
 
     def get_parent_node_from_extras(self, extras_values):
         """Return the Node instance (in the parent group) from the (unique) extras identifying it."""
