@@ -1,5 +1,5 @@
 [build-system]
-requires = ["flit_core>=3.4,<4"]
+requires = ["flit_core>=3.9,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
@@ -20,15 +20,16 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8"
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 
 dependencies = [
-    "aiida-core>=1.0",
-    "pydantic~=1.10.4",
+    "aiida-core>=2.6",
+    "pydantic~=2.8.2",
     "rich",
 ]
 
@@ -40,8 +41,8 @@ qe = [
     "aiida-quantumespresso"
 ]
 dev = [
-    "pre-commit~=2.17.0",
-    "pylint-pydantic~=0.1.8"
+    "pre-commit~=3.8.0",
+    "pylint-pydantic~=0.3.2"
 ]
 
 [tool.black]
