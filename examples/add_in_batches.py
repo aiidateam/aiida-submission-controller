@@ -2,7 +2,7 @@
 """An example of a SubmissionController implementation to compute a 12x12 table of additions."""
 import time
 
-from aiida import orm
+from aiida import load_profile, orm
 from aiida.calculations.arithmetic.add import ArithmeticAddCalculation
 from pydantic import validator
 
@@ -63,6 +63,7 @@ def main():
     ##
     ##  verdi code setup -L add --on-computer --computer=localhost -P core.arithmetic.add --remote-abs-path=/bin/bash -n
     # Create a controller
+    load_profile()
 
     group, _ = orm.Group.objects.get_or_create(label="tests/addition_table")
 
@@ -122,6 +123,9 @@ def main():
             sys.stdout.write("\n")
 
         time.sleep(10)
+
+        if controller.num_to_run == 0:
+            break
 
 
 if __name__ == "__main__":
