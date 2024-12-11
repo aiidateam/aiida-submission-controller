@@ -4,7 +4,7 @@ import time
 
 from aiida import load_profile, orm
 from aiida.calculations.arithmetic.add import ArithmeticAddCalculation
-from pydantic import validator
+from pydantic import field_validator
 
 from aiida_submission_controller import BaseSubmissionController
 
@@ -15,7 +15,7 @@ class AdditionTableSubmissionController(BaseSubmissionController):
     code_label: str
     """Label of the `code.arithmetic.add` `Code`."""
 
-    @validator("code_label")
+    @field_validator("code_label")
     def _check_code_plugin(cls, value):
         plugin_type = orm.load_code(value).default_calc_job_plugin
         if plugin_type == "core.arithmetic.add":
@@ -65,7 +65,7 @@ def main():
     # Create a controller
     load_profile()
 
-    group, _ = orm.Group.objects.get_or_create(label="tests/addition_table")
+    group, _ = orm.Group.collection.get_or_create(label="tests/addition_table")
 
     controller = AdditionTableSubmissionController(
         code_label="add@localhost",
