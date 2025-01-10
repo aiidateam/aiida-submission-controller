@@ -15,6 +15,8 @@ class FromGroupSubmissionController(BaseSubmissionController):  # pylint: disabl
     and define the abstract methods.
     """
 
+    unique_extra_keys: Optional[tuple] = ("_aiida_hash",)
+    """Tuple of keys defined in the extras that uniquely define each process to be run."""
     parent_group_label: str
     """Label of the parent group from which to construct the process inputs."""
     filters: Optional[dict] = None

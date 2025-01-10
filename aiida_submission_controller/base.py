@@ -3,7 +3,6 @@
 import abc
 import logging
 import time
-from typing import Optional
 
 from aiida import engine, orm
 from aiida.common import NotExistent
@@ -54,7 +53,7 @@ class BaseSubmissionController(BaseModel):
     """Label of the group to store the process nodes in."""
     max_concurrent: int
     """Maximum concurrent active processes."""
-    unique_extra_keys: Optional[tuple] = None
+    unique_extra_keys: tuple
     """Tuple of keys defined in the extras that uniquely define each process to be run."""
 
     _validate_group_exists = field_validator("group_label")(validate_group_exists)
