@@ -68,6 +68,7 @@ def main():
     group, _ = orm.Group.collection.get_or_create(label="tests/addition_table")
 
     controller = AdditionTableSubmissionController(
+        unique_extra_keys=("_aiida_sum",),
         code_label="add@localhost",
         group_label=group.label,
         max_concurrent=10,
