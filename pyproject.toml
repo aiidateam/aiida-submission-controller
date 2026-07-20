@@ -29,7 +29,7 @@ classifiers = [
 requires-python = ">=3.10"
 
 dependencies = [
-    "aiida-core>=2.5",
+    "aiida-core~=2.9.0rc0",
     "pydantic~=2.8",
     "rich",
 ]
