@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """A prototype class to submit processes in batches, avoiding to submit too many."""
+
 from typing import Optional
 
 from aiida import orm

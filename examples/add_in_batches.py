@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """An example of a SubmissionController implementation to compute a 12x12 table of additions."""
+
 import time
 
 from aiida import load_profile, orm
